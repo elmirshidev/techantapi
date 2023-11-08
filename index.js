@@ -15,7 +15,9 @@ const fs = require('fs')
 const PORT = process.env.PORT;
 const Post = require('./models/Post.js');
 const User = require('./models/User');
-
+const emailjs = require('@emailjs/nodejs')
+const sgMail = require('@sendgrid/mail')
+sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 const http = require('http');
 // const socketIO  = require('socket.io')
 // const { EventEmitter } = require('events')
@@ -24,35 +26,19 @@ const cors = require('cors')
 const app = express();
 
 const server = http.createServer(app);
-// const io = new Server(server);
-// const io = socketIO(server, {
-//   cors: {
-//     origin: "http://localhost:5173",
-//     methods: ["GET", "POST"],
-//     // allowedHeaders: ["my-custom-header"],
-//     credentials: true
-//   }
-// })
 
+const corsOptions = {
+ credentials: true,
+ origin: 'https://app.techantgram.online',
+};
 
-app.use(cors(
-  
-))
+app.use(cors(corsOptions));
 
 
 app.use(express.json())
 
 app.use(cookieParser())
 
-
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,UPDATE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  // Other headers and middleware configurations
-  next();
-});
 
 
 const saltRounds = 10;
@@ -64,10 +50,10 @@ app.use(bodyParser.urlencoded({
 }));
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads'); // Specify the destination folder where uploaded files will be stored.
+    cb(null, 'uploads'); // Specify the destination folder where uploaded f>
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname.replace(/\\/g, '/')); // Keep the original filename.
+    cb(null, file.originalname.replace(/\\/g, '/')); // Keep the original f>
   },
 });
 const uploads = multer({ storage: storage })
@@ -75,31 +61,27 @@ const uploads = multer({ storage: storage })
 app.use('/uploads', express.static(__dirname + '/uploads'))
 
 
-
-
-
 app.post('/verifyemail', async (req, res) => {
   const { email } = req.body;
-  let config = {
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL,
-      pass: process.env.PASS
-    }
-  }
-  let transporter = nodemailer.createTransport(config);
+
   let digits = '0123456789';
   let OTP = '';
   for (let i = 0; i < 4; i++) {
     OTP += digits[Math.floor(Math.random() * 10)];
   }
-  let message = {
-    from: process.env.EMAIL,
-    to: email,
-    subject: "Email Verification ✔",
-    text: OTP,
-  }
-  await transporter.sendMail(message).then(async () => {
+  const msg = {
+  to: email, // Change to your recipient
+  from: 'rzazadeelmir19@gmail.com', // Change to your verified sender
+  subject: `${OTP} is your code!`,
+  text: 'salam dostum',
+  html: '<strong>techantgram💌</strong>',
+}
+
+
+   sgMail
+  .send(msg)
+  .then(async () => {
+
     const verifyData = await VerifyEmail.create({
       email,
       otpCode: OTP,
@@ -107,15 +89,15 @@ app.post('/verifyemail', async (req, res) => {
       expiresAt: Date.now() + 3600000
     })
 
+
     return res.status(201).json({
       msg: 'We sent code'
     })
-  }).catch((err) => {
+  })
+  .catch((err) => {
     return res.status(500).json({ err })
   })
 })
-
-
 app.post('/register', async (req, res) => {
   const { username, email, pass, code } = req.body;
   const UserDocU = await User.findOne({
@@ -156,8 +138,7 @@ app.post('/register', async (req, res) => {
       username: username,
       email: email,
       password: hashedPass
-    })
-    await VerifyEmail.deleteOne({
+    })    await VerifyEmail.deleteOne({
       email: email
     })
 
@@ -180,7 +161,6 @@ app.post('/register', async (req, res) => {
 
 
 })
-
 
 app.post('/login', async (req, res) => {
   console.log('hit login')
@@ -265,8 +245,6 @@ app.put('/editprofile', protect, uploads.single("file"), async (req, res) => {
   })
 
 })
-
-
 app.get('/logout', protect, async (req, res) => {
   res.cookie('jwt', '', {
     httpOnly: true,
@@ -276,7 +254,6 @@ app.get('/logout', protect, async (req, res) => {
     message: "User logged out"
   })
 })
-
 
 app.get('/myprofile', protect, async (req, res) => {
 
@@ -310,17 +287,11 @@ app.post('/createpost', protect, uploads.single("file"), async (req, res) => {
     msg: 'Post Created!'
   })
 })
-
-
-
-
-
-
 app.get('/users/:id', protect, async (req, res) => {
   const id = req.params?.id;
 
   try {
-    
+
     if (id === req.user._id) {
       const userWithPosts = await User.findById(id)
         .populate({
@@ -328,7 +299,7 @@ app.get('/users/:id', protect, async (req, res) => {
           populate: [
             { path: 'user', select: 'username profileImage _id isAdmin' },
             { path: 'likes', select: 'username profileImage _id isAdmin' },
-            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', select: 'username profileImage _id isAdmin' } }
+            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', s>
           ]
         })
         .populate('followers', 'username profileImage _id isAdmin')
@@ -336,12 +307,13 @@ app.get('/users/:id', protect, async (req, res) => {
 
 
       // Create a user DTO with only the desired fields
-      const userDto = {
+        let newPosts = userWithPosts.posts.reverse();
+  const userDto = {
         _id: userWithPosts._id,
         username: userWithPosts.username,
         profileImage: userWithPosts.profileImage,
         bio: userWithPosts.bio,
-        posts: userWithPosts.posts,
+        posts: newPosts,
         followers: userWithPosts.followers,
         following: userWithPosts.following,
         isAdmin: userWithPosts.isAdmin
@@ -356,14 +328,13 @@ app.get('/users/:id', protect, async (req, res) => {
         .populate({
           path: 'posts',
           populate: [
-            { path: 'user', select: 'username profileImage _id isAdmin' },
-            { path: 'likes', select: 'username profileImage _id isAdmin' },
-            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', select: 'username profileImage _id isAdmin' } }
+            { path: 'user', select: 'username profileImage _id isAdmin' }, { path: 'likes', select: 'username profileImage _id isAdmin' },
+            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', s>
           ]
         })
         .populate('followers', 'username profileImage _id isAdmin')
         .populate('following', 'username profileImage _id isAdmin')
-      
+
 
       // Create a user DTO with only the desired fields
       const userDto = {
@@ -379,14 +350,12 @@ app.get('/users/:id', protect, async (req, res) => {
       res.status(200).json(userDto);
     }
   } catch (error) {
-    
+
     res.status(500).json({ error: 'Internal server error' });
 
-    
+
   }
 });
-
-
 app.post('/follow/:id', protect, async (req, res) => {
   const currentUserId = req.user._id;
   const otherUserId = req.params.id;
@@ -400,7 +369,7 @@ app.post('/follow/:id', protect, async (req, res) => {
     }
 
     // Check if the current user is already following the other user
-    if (currentUser.following.includes(otherUserId) || otherUser.followers.includes(currentUserId)) {
+    if (currentUser.following.includes(otherUserId) || otherUser.followers.includes(curren>
       return res.status(400).json({ error: 'Already following' });
     }
 
@@ -427,10 +396,6 @@ app.post('/follow/:id', protect, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
-
-
 app.delete('/follow/:id', protect, async (req, res) => {
   const currentUserId = req.user._id;
   const otherUserId = req.params.id;
@@ -443,8 +408,8 @@ app.delete('/follow/:id', protect, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check if the current user is not already following the other user or if the other user's followers do not include the current user
-    if (!currentUser.following.includes(otherUserId) || !otherUser.followers.includes(currentUserId)) {
+    // Check if the current user is not already following the other user or if the other u>
+    if (!currentUser.following.includes(otherUserId) || !otherUser.followers.includes(curr>
       return res.status(400).json({ error: 'Not following' });
     }
 
@@ -471,9 +436,6 @@ app.delete('/follow/:id', protect, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
-
 app.post('/comment', protect, async (req, res) => {
   const { comment, postId } = req.body;
   const currentUserId = req.user._id;
@@ -500,8 +462,6 @@ app.post('/comment', protect, async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
 app.post('/like', protect, async (req, res) => {
   const { postId } = req.body;
   const currentUserId = req.user._id;
@@ -519,7 +479,6 @@ app.post('/like', protect, async (req, res) => {
   return res.status(200).json(updatedPost);
 });
 
-
 app.delete('/like', protect, async (req, res) => {
   const { postId } = req.body;
   const currentUserId = req.user._id;
@@ -536,7 +495,6 @@ app.delete('/like', protect, async (req, res) => {
 
   return res.status(200).json(updatedPost);
 })
-
 app.get('/posts', protect, async (req, res) => {
   const posts = await Post.find({ user: { $ne: req.user._id } }).populate({
     path: 'user',
@@ -577,3 +535,5 @@ connectMongo()
 server.listen(PORT, () => {
   console.log('Backend started!');
 })
+
+
