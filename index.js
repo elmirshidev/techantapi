@@ -138,7 +138,8 @@ app.post('/register', async (req, res) => {
       username: username,
       email: email,
       password: hashedPass
-    })    await VerifyEmail.deleteOne({
+    })    
+    await VerifyEmail.deleteOne({
       email: email
     })
 
