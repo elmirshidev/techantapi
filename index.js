@@ -370,7 +370,7 @@ app.post('/follow/:id', protect, async (req, res) => {
     }
 
     // Check if the current user is already following the other user
-    if (currentUser.following.includes(otherUserId) || otherUser.followers.includes(currentUserId){
+    if (currentUser.following.includes(otherUserId) || otherUser.followers.includes(currentUserId)){
       return res.status(400).json({ error: 'Already following' });
     }
 
@@ -410,7 +410,7 @@ app.delete('/follow/:id', protect, async (req, res) => {
     }
 
     // Check if the current user is not already following the other user or if the other u>
-    if (!currentUser.following.includes(otherUserId) || !otherUser.followers.includes(currentUserId){
+    if (!currentUser.following.includes(otherUserId) || !otherUser.followers.includes(currentUserId)){
       return res.status(400).json({ error: 'Not following' });
     }
 
