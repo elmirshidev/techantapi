@@ -300,7 +300,7 @@ app.get('/users/:id', protect, async (req, res) => {
           populate: [
             { path: 'user', select: 'username profileImage _id isAdmin' },
             { path: 'likes', select: 'username profileImage _id isAdmin' },
-            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', s>
+            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', select: 'username profileImage _id isAdmin' }}
           ]
         })
         .populate('followers', 'username profileImage _id isAdmin')
@@ -330,7 +330,7 @@ app.get('/users/:id', protect, async (req, res) => {
           path: 'posts',
           populate: [
             { path: 'user', select: 'username profileImage _id isAdmin' }, { path: 'likes', select: 'username profileImage _id isAdmin' },
-            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', s>
+            { path: 'comments', select: 'text createdAt user', populate: { path: 'user', select: 'username profileImage _id isAdmin' }}
           ]
         })
         .populate('followers', 'username profileImage _id isAdmin')
